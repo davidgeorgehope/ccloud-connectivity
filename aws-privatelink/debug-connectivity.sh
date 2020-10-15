@@ -26,9 +26,6 @@ dig 1>/dev/null 2>/dev/null
 openssl version 1>/dev/null 2>/dev/null
 [[ $? == 127 ]] && echo "warning: please install 'openssl'"
 
-aws 1>/dev/null 2>/dev/null
-[[ $? == 127 ]] && echo "warning: please install 'aws'"
-
 if [[ $# != 2 ]]; then
     echo "usage: $0 <bootstrap> <api-key>" 1>&2
     echo "" 1>&2
@@ -71,19 +68,4 @@ for namePort in $bootstrap $(kafkacat \
     name=$(echo "$namePort" | awk -F: '{print $1}')
     # shellcheck disable=SC2046
     echo "$namePort" $(dig +short "$name") $(openssl s_client -connect "$namePort" -servername "$name" </dev/null 2>/dev/null | grep -E 'BEGIN CERTIFICATE|Verify return code' | xargs)
-done
-
-echo
-echo "Route53 Hosted Zone Checks"
-echo
-for nameZoneId in $(aws \
-    route53 list-hosted-zones \
-    --query 'HostedZones[*].[Name,Id]' \
-    --output text \
-    | grep "$(echo "$bootstrap" | sed 's/^lkc-[^-]*-//' | sed 's/glb\.//')"); do
-
-    echo "$nameZoneId"
-    zoneId=$(echo "$nameZoneId" | awk '{print $2}')
-    aws route53 list-resource-record-sets --hosted-zone-id "$zoneId" --output json | cat
-    echo
 done
